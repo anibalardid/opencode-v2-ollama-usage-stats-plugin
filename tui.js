@@ -2,11 +2,14 @@
 import { Plugin } from "@opencode/plugin/tui";
 import { createSignal } from "solid-js";
 import { jsx, jsxs } from "@opentui/solid/jsx-runtime";
-var CONFIG_PATHS = [
-  { path: process.env.HOME + "/.config/opencode/opencode-quota/ollama-cloud.json", type: "json" },
-  { path: process.env.HOME + "/.config/ollama-usage/config.yaml", type: "yaml" },
-  { path: process.env.HOME + "/.ollama-usage/config.yaml", type: "yaml" }
-];
+function configPaths() {
+  const home = process.env.HOME ?? "";
+  return [
+    { path: home + "/.config/opencode/opencode-quota/ollama-cloud.json", type: "json" },
+    { path: home + "/.config/ollama-usage/config.yaml", type: "yaml" },
+    { path: home + "/.ollama-usage/config.yaml", type: "yaml" }
+  ];
+}
 var SETTINGS_URL = "https://ollama.com/settings";
 var USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Gecko/20100101 Firefox/148.0";
 var SCRAPE_TIMEOUT_MS = 1e4;
@@ -20,7 +23,7 @@ function readYamlCookie(content) {
 async function resolveCookie() {
   const env = process.env.OLLAMA_USAGE_COOKIE?.trim();
   if (env) return { result: { cookie: env, source: "OLLAMA_USAGE_COOKIE" } };
-  for (const { path, type } of CONFIG_PATHS) {
+  for (const { path, type } of configPaths()) {
     try {
       const fs = await import("fs/promises");
       const content = await fs.readFile(path, "utf-8");

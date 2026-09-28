@@ -21,11 +21,12 @@ OpenCode 2 sidebar plugin that shows Ollama Cloud session and weekly usage.
 git clone git@github.com:anibalardid/opencode-v2-ollama-usage-stats-plugin.git
 cd opencode-v2-ollama-usage-stats-plugin
 npm install
-npm run build
+npm run build          # emits tui.js at the repo root
 ```
 
-Register the plugin directory in your global OpenCode 2 CLI config
-(`~/.config/opencode/cli.json`):
+Then pick one registration mode:
+
+**A. Register as a package path** in `~/.config/opencode/cli.json`:
 
 ```json
 {
@@ -33,16 +34,21 @@ Register the plugin directory in your global OpenCode 2 CLI config
 }
 ```
 
-Restart the OpenCode 2 TUI. You'll see an **Ollama Cloud** section in the sidebar.
-
-### Alternative: global plugins directory
-
-Instead of editing `cli.json`, symlink or copy the folder under
-`~/.config/opencode/plugins/` — OpenCode discovers plugins there automatically:
+**B. Symlink into the plugins directory** (auto-discovered, no config edit):
 
 ```bash
 ln -s "$(pwd)" ~/.config/opencode/plugins/ollama-cloud-usage
 ```
+
+Restart the OpenCode 2 TUI. You'll see an **Ollama Cloud** section in the sidebar
+of any session.
+
+> If you isolate OpenCode 2 with a custom config dir, use that dir's `cli.json` /
+> `plugins/` instead (e.g. `~/.config/opencode-v2/`).
+
+The build emits **`tui.js` at the repository root** on purpose: OpenCode 2
+discovers a local plugin *directory* by looking for `tui.ts` / `tui.js` at the
+directory root, not via `package.json` `exports`.
 
 ## Cookie setup
 

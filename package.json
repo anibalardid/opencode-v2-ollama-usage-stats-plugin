@@ -3,11 +3,15 @@
   "version": "0.1.0",
   "description": "Ollama Cloud usage tracker for OpenCode 2 (CLI) — shows session and weekly usage in the sidebar.",
   "type": "module",
+  "main": "./tui.js",
   "exports": {
-    "./tui": "./dist/tui.js"
+    ".": "./tui.js",
+    "./tui": "./tui.js"
   },
   "files": [
-    "dist"
+    "tui.js",
+    "tui.d.ts",
+    "src"
   ],
   "scripts": {
     "build": "tsup",
@@ -33,12 +37,12 @@
   },
   "devDependencies": {
     "@opencode/plugin": "2.0.18",
-    "@opencode/theme": "^2.0.18",
-    "@opentui/core": "^0.5.8",
-    "@opentui/solid": "^0.5.8",
+    "@opencode/theme": "2.0.18",
+    "@opentui/core": "^0.5.12",
+    "@opentui/solid": "^0.5.12",
     "solid-js": "^1.9.12",
     "tsup": "^8.5.1",
     "typescript": "^5.5.0"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
 }

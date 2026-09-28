@@ -5,12 +5,16 @@ import { createSignal } from "solid-js"
 
 // ── Config sources (cookie resolution) ────────────────────────────────────────
 // Checked in order. The JSON path matches the V1 plugin so a single cookie file
-// works for both OpenCode 1 and OpenCode 2.
-const CONFIG_PATHS = [
-  { path: process.env.HOME + "/.config/opencode/opencode-quota/ollama-cloud.json", type: "json" },
-  { path: process.env.HOME + "/.config/ollama-usage/config.yaml", type: "yaml" },
-  { path: process.env.HOME + "/.ollama-usage/config.yaml", type: "yaml" },
-] as const
+// works for both OpenCode 1 and OpenCode 2. Resolved lazily (not at module top
+// level) so importing the module never touches `process`.
+function configPaths() {
+  const home = process.env.HOME ?? ""
+  return [
+    { path: home + "/.config/opencode/opencode-quota/ollama-cloud.json", type: "json" as const },
+    { path: home + "/.config/ollama-usage/config.yaml", type: "yaml" as const },
+    { path: home + "/.ollama-usage/config.yaml", type: "yaml" as const },
+  ]
+}
 
 const SETTINGS_URL = "https://ollama.com/settings"
 const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Gecko/20100101 Firefox/148.0"
@@ -36,7 +40,7 @@ async function resolveCookie(): Promise<{ result?: CookieResult; error?: string 
   if (env) return { result: { cookie: env, source: "OLLAMA_USAGE_COOKIE" } }
 
   // 2. Config files
-  for (const { path, type } of CONFIG_PATHS) {
+  for (const { path, type } of configPaths()) {
     try {
       const fs = await import("fs/promises")
       const content = await fs.readFile(path, "utf-8")
