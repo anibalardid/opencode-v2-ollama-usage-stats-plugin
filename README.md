@@ -34,6 +34,19 @@ Verified against OpenCode **2.0.18**.
 
 ## Install
 
+OpenCode 2 loads TUI plugins from two places:
+
+- **A plugin directory** under the OpenCode config dir — auto-discovered, no
+  config edit. Because this plugin's built `tui.js` sits at the repo root, the
+  repo directory itself *is* a valid plugin directory.
+- **An entry in `cli.json`** — a path or package registered explicitly.
+
+The default config dir is `~/.config/opencode/`. If you isolate OpenCode 2 (see
+[Isolating OpenCode 2](#isolating-opencode-2-from-v1)) it is
+`~/.config/opencode-v2/` instead — swap it into the paths below.
+
+### 1. Build
+
 ```bash
 git clone git@github.com:anibalardid/opencode-v2-ollama-usage-stats-plugin.git
 cd opencode-v2-ollama-usage-stats-plugin
@@ -41,34 +54,42 @@ npm install
 npm run build
 ```
 
-`npm run build` emits **`tui.js` at the repository root**. OpenCode 2 discovers a
-local plugin *directory* by looking for `tui.ts` / `tui.js` **at the directory
-root** (see [Discovery gotcha](#discovery-gotcha)).
+`npm run build` emits **`tui.js` at the repository root** (see
+[Discovery gotcha](#discovery-gotcha) for why).
 
-Then pick one of two registration modes:
+### 2. Register it (pick one)
 
-**A. Register it as a package path** in your global CLI config
-(`~/.config/opencode/cli.json`):
+**Option A — symlink the repo into the plugins directory** (auto-discovered, no
+config edit):
 
-```json
+```bash
+ln -s "$(pwd)" ~/.config/opencode/plugins/ollama-cloud-usage
+# isolated setup uses: ~/.config/opencode-v2/plugins/ollama-cloud-usage
+```
+
+The directory name is free-form — it does not have to match the plugin id.
+A symlink means future `npm run build` output is picked up with no re-copy.
+
+**Option B — register the path in `cli.json`:**
+
+```jsonc
+// ~/.config/opencode/cli.json  (or ~/.config/opencode-v2/cli.json)
 {
   "plugins": ["/absolute/path/to/opencode-v2-ollama-usage-stats-plugin"]
 }
 ```
 
-**B. Symlink the repo into the plugins directory** (auto-discovered, no config
-edit):
+**Option C — copy the built dir** instead of symlinking:
 
 ```bash
-ln -s "$(pwd)" ~/.config/opencode/plugins/ollama-cloud-usage
+mkdir -p ~/.config/opencode/plugins/ollama-cloud-usage
+cp package.json tui.js ~/.config/opencode/plugins/ollama-cloud-usage/
 ```
 
-Restart the OpenCode 2 TUI. You'll see an **Ollama Cloud** section in the
-sidebar of any session.
+Re-copy after every rebuild (a symlink avoids this step).
 
-> If you isolate OpenCode 2 with a custom config dir (recommended — see
-> [Isolating OpenCode 2](#isolating-opencode-2-from-v1)), use that dir instead:
-> `~/.config/opencode-v2/cli.json` or `~/.config/opencode-v2/plugins/`.
+Restart the OpenCode 2 TUI. You'll see an **Ollama Cloud** section in the sidebar
+of any session.
 
 ## Cookie setup
 
