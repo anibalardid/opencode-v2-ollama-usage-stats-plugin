@@ -194,35 +194,10 @@ async function scrapeUsage(cookie: string): Promise<{ data?: UsageData; error?: 
   }
 }
 
-// ── Formatting helpers ───────────────────────────────────────────────────────
-function barStr(ratio: number, w: number): string {
-  const filled = Math.round(Math.min(ratio, 1) * w)
-  return "█".repeat(Math.max(0, filled)) + "░".repeat(Math.max(0, w - filled))
-}
-
-function fmtPct(used: number): string {
-  return `${used.toFixed(1)}%`
-}
-
-function fmtTime(iso?: string): string {
-  if (!iso) return ""
-  try {
-    const d = new Date(iso)
-    const now = new Date()
-    const diff = d.getTime() - now.getTime()
-    if (diff <= 0) return "resets now"
-    const hours = Math.round(diff / 3600_000)
-    if (hours < 24) return `in ${hours}h`
-    const days = Math.round(hours / 24)
-    return `in ${days}d`
-  } catch {
-    return ""
-  }
-}
-
-// Yellow ≥ 50%, red ≥ 80% (user preference for usage plugins).
-function circle(pct: number): string {
-  return pct >= 80 ? "🔴 " : pct >= 50 ? "🟡 " : ""
+function heat<T>(pct: number, ok: T, warn: T, bad: T): T {
+  if (pct >= 80) return bad
+  if (pct >= 50) return warn
+  return ok
 }
 
 // ── Plugin ───────────────────────────────────────────────────────────────────
@@ -236,11 +211,6 @@ export default Plugin.define({
   id: "ollama.cloud.usage",
 
   setup(context) {
-    // Durable UI preference (survives restarts, syncs across TUI instances).
-    const [prefs, updatePrefs] = context.storage.store("prefs", {
-      initial: { expanded: true },
-    })
-
     const [state, setState] = createSignal<State>({ kind: "loading" })
 
     let timerId: ReturnType<typeof setInterval> | undefined
@@ -293,79 +263,25 @@ export default Plugin.define({
       render: () => {
         const fg = context.theme.text.base
         const mu = context.theme.text.muted
-        const warn = context.theme.text.feedback.warning.base
         const s = state()
-        const e = prefs.expanded
-
-        const toggle = () =>
-          updatePrefs((draft) => {
-            draft.expanded = !draft.expanded
-          })
-
-        if (s.kind === "loading") {
-          return (
-            <box flexDirection="column">
-              <text fg={mu}>Ollama Cloud</text>
-              <text fg={mu}>Loading…</text>
-            </box>
-          )
+        if (s.kind !== "data") {
+          const text = s.kind === "loading" ? "Ollama: loading…" : s.kind === "help" ? "Ollama: no cookie" : `Ollama: ${s.msg}`
+          return <text fg={s.kind === "loading" ? mu : context.theme.text.feedback.warning.base}>{text}</text>
         }
-
-        if (s.kind === "help") {
-          return (
-            <box flexDirection="column">
-              <text fg={warn}>⚠ Ollama Cloud</text>
-              <text fg={mu}>No cookie configured</text>
-              <text fg={mu}>Set OLLAMA_USAGE_COOKIE</text>
-              <text fg={mu}>or create:</text>
-              <text fg={mu}>~/.config/opencode/</text>
-              <text fg={mu}>  opencode-quota/</text>
-              <text fg={mu}>    ollama-cloud.json</text>
-              <text fg={mu}>{'→ {"cookie":"..."}'}</text>
-            </box>
-          )
-        }
-
-        if (s.kind === "error") {
-          return (
-            <box flexDirection="column">
-              <text fg={warn}>⚠ Ollama Cloud</text>
-              <text fg={mu}>{s.msg}</text>
-            </box>
-          )
-        }
-
-        const d = s.d
-        const sessionPct = d.sessionPercent
-        const weeklyPct = d.weeklyPercent
-        const sessionCircle = circle(sessionPct)
-        const weeklyCircle = circle(weeklyPct)
-
+        const rows = [
+          { label: "5h", pct: s.d.sessionPercent },
+          { label: "7d", pct: s.d.weeklyPercent },
+        ]
         return (
-          <box flexDirection="column">
-            <box flexDirection="row" justifyContent="space-between" onMouseDown={toggle}>
-              <text fg={fg}>
-                {e ? "▼" : "▶"} Ollama Cloud{d.planTier ? ` (${d.planTier})` : ""}
-              </text>
-              <text fg={fg}>{sessionCircle}{fmtPct(sessionPct)}</text>
-            </box>
-            {e && (
-              <box flexDirection="column">
-                <box flexDirection="row" justifyContent="space-between">
-                  <text fg={fg}>{sessionCircle}Session</text>
-                  <text fg={fg}>{fmtPct(sessionPct)} used</text>
-                </box>
-                <text fg={fg}>{barStr(sessionPct / 100, 8)} {fmtPct(sessionPct)}</text>
-                {d.sessionReset && <text fg={mu}>Reset {fmtTime(d.sessionReset)}</text>}
-
-                <box flexDirection="row" justifyContent="space-between">
-                  <text fg={fg}>{weeklyCircle}Weekly</text>
-                  <text fg={fg}>{fmtPct(weeklyPct)} used</text>
-                </box>
-                <text fg={fg}>{barStr(weeklyPct / 100, 8)} {fmtPct(weeklyPct)}</text>
-                {d.weeklyReset && <text fg={mu}>Reset {fmtTime(d.weeklyReset)}</text>}
+          <box flexDirection="row">
+            <text fg={fg}>Ollama</text>
+            {rows.map((row, i) => (
+              <box flexDirection="row">
+                <text fg={mu}>{i === 0 ? " " : " · "}</text>
+                <text fg={heat(row.pct, context.theme.text.feedback.success.base, context.theme.text.feedback.warning.base, context.theme.text.feedback.error.base)}>●</text>
+                <text fg={fg}> {row.label} {Math.round(row.pct)}%</text>
               </box>
-            )}
+            ))}
           </box>
         )
       },

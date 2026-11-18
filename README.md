@@ -4,18 +4,10 @@ A sidebar plugin for **OpenCode 2** that shows your **Ollama Cloud** session and
 weekly usage, scraped from [ollama.com/settings](https://ollama.com/settings).
 
 ```
-▼ Ollama Cloud (pro)             7.0%
-  Session                      7.0% used
-  ░░░░░░░░ 7.0%
-  Reset in 2h
-  Weekly                       1.4% used
-  ░░░░░░░░ 1.4%
-  Reset in 6d
+Ollama ● 5h 7% · ● 7d 1%
 ```
 
-- 🔴 red circle ≥ 80% · 🟡 yellow circle ≥ 50%
-- Refreshes every 3 minutes; self-heals after network errors
-- Click the header to collapse/expand (state is persisted)
+Percentages are **used**. The dot is green under 50%, warning from 50%, red from 80%. Refreshes every 3 minutes.
 
 > This is the **OpenCode 2** (`opencode2` / `@opencode/cli`) plugin, built on the
 > new V2 plugin API. The OpenCode 1 plugin lives in

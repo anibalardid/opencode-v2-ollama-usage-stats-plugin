@@ -143,37 +143,14 @@ async function scrapeUsage(cookie) {
     return { error: err?.message ?? String(err) };
   }
 }
-function barStr(ratio, w) {
-  const filled = Math.round(Math.min(ratio, 1) * w);
-  return "\u2588".repeat(Math.max(0, filled)) + "\u2591".repeat(Math.max(0, w - filled));
-}
-function fmtPct(used) {
-  return `${used.toFixed(1)}%`;
-}
-function fmtTime(iso) {
-  if (!iso) return "";
-  try {
-    const d = new Date(iso);
-    const now = /* @__PURE__ */ new Date();
-    const diff = d.getTime() - now.getTime();
-    if (diff <= 0) return "resets now";
-    const hours = Math.round(diff / 36e5);
-    if (hours < 24) return `in ${hours}h`;
-    const days = Math.round(hours / 24);
-    return `in ${days}d`;
-  } catch {
-    return "";
-  }
-}
-function circle(pct) {
-  return pct >= 80 ? "\u{1F534} " : pct >= 50 ? "\u{1F7E1} " : "";
+function heat(pct, ok, warn, bad) {
+  if (pct >= 80) return bad;
+  if (pct >= 50) return warn;
+  return ok;
 }
 var tui_default = Plugin.define({
   id: "ollama.cloud.usage",
   setup(context) {
-    const [prefs, updatePrefs] = context.storage.store("prefs", {
-      initial: { expanded: true }
-    });
     const [state, setState] = createSignal({ kind: "loading" });
     let timerId;
     let retryTimer;
@@ -212,93 +189,28 @@ var tui_default = Plugin.define({
       render: () => {
         const fg = context.theme.text.base;
         const mu = context.theme.text.muted;
-        const warn = context.theme.text.feedback.warning.base;
         const s = state();
-        const e = prefs.expanded;
-        const toggle = () => updatePrefs((draft) => {
-          draft.expanded = !draft.expanded;
-        });
-        if (s.kind === "loading") {
-          return /* @__PURE__ */ jsxs("box", { flexDirection: "column", children: [
-            /* @__PURE__ */ jsx("text", { fg: mu, children: "Ollama Cloud" }),
-            /* @__PURE__ */ jsx("text", { fg: mu, children: "Loading\u2026" })
-          ] });
+        if (s.kind !== "data") {
+          const text = s.kind === "loading" ? "Ollama: loading\u2026" : s.kind === "help" ? "Ollama: no cookie" : `Ollama: ${s.msg}`;
+          return /* @__PURE__ */ jsx("text", { fg: s.kind === "loading" ? mu : context.theme.text.feedback.warning.base, children: text });
         }
-        if (s.kind === "help") {
-          return /* @__PURE__ */ jsxs("box", { flexDirection: "column", children: [
-            /* @__PURE__ */ jsx("text", { fg: warn, children: "\u26A0 Ollama Cloud" }),
-            /* @__PURE__ */ jsx("text", { fg: mu, children: "No cookie configured" }),
-            /* @__PURE__ */ jsx("text", { fg: mu, children: "Set OLLAMA_USAGE_COOKIE" }),
-            /* @__PURE__ */ jsx("text", { fg: mu, children: "or create:" }),
-            /* @__PURE__ */ jsx("text", { fg: mu, children: "~/.config/opencode/" }),
-            /* @__PURE__ */ jsx("text", { fg: mu, children: "  opencode-quota/" }),
-            /* @__PURE__ */ jsx("text", { fg: mu, children: "    ollama-cloud.json" }),
-            /* @__PURE__ */ jsx("text", { fg: mu, children: '\u2192 {"cookie":"..."}' })
-          ] });
-        }
-        if (s.kind === "error") {
-          return /* @__PURE__ */ jsxs("box", { flexDirection: "column", children: [
-            /* @__PURE__ */ jsx("text", { fg: warn, children: "\u26A0 Ollama Cloud" }),
-            /* @__PURE__ */ jsx("text", { fg: mu, children: s.msg })
-          ] });
-        }
-        const d = s.d;
-        const sessionPct = d.sessionPercent;
-        const weeklyPct = d.weeklyPercent;
-        const sessionCircle = circle(sessionPct);
-        const weeklyCircle = circle(weeklyPct);
-        return /* @__PURE__ */ jsxs("box", { flexDirection: "column", children: [
-          /* @__PURE__ */ jsxs("box", { flexDirection: "row", justifyContent: "space-between", onMouseDown: toggle, children: [
+        const rows = [
+          { label: "5h", pct: s.d.sessionPercent },
+          { label: "7d", pct: s.d.weeklyPercent }
+        ];
+        return /* @__PURE__ */ jsxs("box", { flexDirection: "row", children: [
+          /* @__PURE__ */ jsx("text", { fg, children: "Ollama" }),
+          rows.map((row, i) => /* @__PURE__ */ jsxs("box", { flexDirection: "row", children: [
+            /* @__PURE__ */ jsx("text", { fg: mu, children: i === 0 ? " " : " \xB7 " }),
+            /* @__PURE__ */ jsx("text", { fg: heat(row.pct, context.theme.text.feedback.success.base, context.theme.text.feedback.warning.base, context.theme.text.feedback.error.base), children: "\u25CF" }),
             /* @__PURE__ */ jsxs("text", { fg, children: [
-              e ? "\u25BC" : "\u25B6",
-              " Ollama Cloud",
-              d.planTier ? ` (${d.planTier})` : ""
-            ] }),
-            /* @__PURE__ */ jsxs("text", { fg, children: [
-              sessionCircle,
-              fmtPct(sessionPct)
-            ] })
-          ] }),
-          e && /* @__PURE__ */ jsxs("box", { flexDirection: "column", children: [
-            /* @__PURE__ */ jsxs("box", { flexDirection: "row", justifyContent: "space-between", children: [
-              /* @__PURE__ */ jsxs("text", { fg, children: [
-                sessionCircle,
-                "Session"
-              ] }),
-              /* @__PURE__ */ jsxs("text", { fg, children: [
-                fmtPct(sessionPct),
-                " used"
-              ] })
-            ] }),
-            /* @__PURE__ */ jsxs("text", { fg, children: [
-              barStr(sessionPct / 100, 8),
               " ",
-              fmtPct(sessionPct)
-            ] }),
-            d.sessionReset && /* @__PURE__ */ jsxs("text", { fg: mu, children: [
-              "Reset ",
-              fmtTime(d.sessionReset)
-            ] }),
-            /* @__PURE__ */ jsxs("box", { flexDirection: "row", justifyContent: "space-between", children: [
-              /* @__PURE__ */ jsxs("text", { fg, children: [
-                weeklyCircle,
-                "Weekly"
-              ] }),
-              /* @__PURE__ */ jsxs("text", { fg, children: [
-                fmtPct(weeklyPct),
-                " used"
-              ] })
-            ] }),
-            /* @__PURE__ */ jsxs("text", { fg, children: [
-              barStr(weeklyPct / 100, 8),
+              row.label,
               " ",
-              fmtPct(weeklyPct)
-            ] }),
-            d.weeklyReset && /* @__PURE__ */ jsxs("text", { fg: mu, children: [
-              "Reset ",
-              fmtTime(d.weeklyReset)
+              Math.round(row.pct),
+              "%"
             ] })
-          ] })
+          ] }))
         ] });
       }
     });
